@@ -1,0 +1,116 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  ADMINISTRATOR
+  MANAGER
+  USER
+}
+
+enum PostLocale {
+  GB
+  VI
+}
+
+// post: id, ownerPost, postRevisionID
+// postRevisions: postId (ref Post), id , owner
+// postReview: postId, postRevisionID
+// postSchedule: postReviewID, startAt
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  role          UserRole       @default(USER)
+  posts         Post[]
+  postRevisions PostRevision[]
+  postSchedules PostSchedule[]
+  postReviews   PostReview[]
+}
+
+model Post {
+  id                  String     @id @default(uuid())
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  createdBy           String
+  locale              PostLocale @default(GB)
+  publishedRevisionId String?    @unique
+  latestedRevisionId  String?    @unique
+  primaryId           String?
+
+  primary           Post?          @relation("PostLocalization", fields: [primaryId], references: [id])
+  locales           Post[]         @relation("PostLocalization")
+  user              User           @relation(fields: [createdBy], references: [id])
+  authors           PostAuthor[]
+  reviews           PostReview[]
+  revisions         PostRevision[] @relation("PostRevisions")
+  latestedRevision  PostRevision?  @relation("PostLatestRevision", fields: [latestedRevisionId], references: [id])
+  publishedRevision PostRevision?  @relation("PostPublishedRevision", fields: [publishedRevisionId], references: [id])
+}
+
+model PostRevision {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String
+  data      Json
+  postId    String
+
+  user          User        @relation(fields: [createdBy], references: [id])
+  post          Post        @relation("PostRevisions", fields: [postId], references: [id])
+  latestedPost  Post?       @relation("PostLatestRevision")
+  publishedPost Post?       @relation("PostPublishedRevision")
+  postReview    PostReview?
+}
+
+model PostAuthor {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String
+  postId    String
+
+  post Post @relation(fields: [postId], references: [id])
+
+  @@unique([createdBy, postId])
+}
+
+model PostReview {
+  id             String    @id @default(uuid())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdBy      String
+  postId         String
+  postRevisionId String    @unique()
+  approvedAt     DateTime?
+  rejectedAt     DateTime?
+
+  post          Post           @relation(fields: [postId], references: [id])
+  user          User           @relation(fields: [createdBy], references: [id])
+  postRevision  PostRevision   @relation(fields: [postRevisionId], references: [id])
+  postSchedules PostSchedule[]
+
+  @@unique([postId, postRevisionId])
+}
+
+model PostSchedule {
+  id           String   @id @default(uuid())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  createdBy    String
+  postReviewId String
+  startAt      DateTime
+
+  user       User       @relation(fields: [createdBy], references: [id])
+  postReview PostReview @relation(fields: [postReviewId], references: [id])
+}
