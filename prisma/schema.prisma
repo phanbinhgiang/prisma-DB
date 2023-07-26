@@ -18,6 +18,12 @@ enum PostLocale {
   VI
 }
 
+enum PostType {
+  NORMAL
+  LONGFORM
+  VIDEO
+}
+
 // post: id, ownerPost, postRevisionID
 // postRevisions: postId (ref Post), id , owner
 // postReview: postId, postRevisionID
@@ -31,11 +37,58 @@ model User {
   updatedAt DateTime @updatedAt
   createdBy String?
 
-  role          UserRole       @default(USER)
-  posts         Post[]
-  postRevisions PostRevision[]
-  postSchedules PostSchedule[]
-  postReviews   PostReview[]
+  role            UserRole         @default(USER)
+  posts           Post[]
+  postRevisions   PostRevision[]
+  postSchedules   PostSchedule[]
+  postReviews     PostReview[]
+  revisionAuthors RevisionAuthor[]
+  postAuthors     PostAuthor[]
+  Tag             Tag[]
+}
+
+model Tag {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String
+  title     Json
+  name      String
+  orgId     String
+
+  user       User         @relation(fields: [createdBy], references: [id])
+  postTags   PostTag[]
+  RevisonTag RevisonTag[]
+
+  @@unique([orgId, name])
+}
+
+model PostTag {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String
+  postId    String
+  tagId     String
+
+  post Post @relation(fields: [postId], references: [id])
+  tag  Tag  @relation(fields: [tagId], references: [id])
+
+  @@unique([postId, tagId])
+}
+
+model RevisonTag {
+  id         String   @id @default(uuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  createdBy  String
+  revisionId String
+  tagId      String
+
+  revision PostRevision @relation(fields: [revisionId], references: [id])
+  tag      Tag          @relation(fields: [tagId], references: [id])
+
+  @@unique([revisionId, tagId])
 }
 
 model Post {
@@ -47,6 +100,7 @@ model Post {
   publishedRevisionId String?    @unique
   latestedRevisionId  String?    @unique
   primaryId           String?
+  type                PostType   @default(NORMAL)
 
   primary           Post?          @relation("PostLocalization", fields: [primaryId], references: [id])
   locales           Post[]         @relation("PostLocalization")
@@ -56,6 +110,7 @@ model Post {
   revisions         PostRevision[] @relation("PostRevisions")
   latestedRevision  PostRevision?  @relation("PostLatestRevision", fields: [latestedRevisionId], references: [id])
   publishedRevision PostRevision?  @relation("PostPublishedRevision", fields: [publishedRevisionId], references: [id])
+  postTags          PostTag[]
 }
 
 model PostRevision {
@@ -63,14 +118,53 @@ model PostRevision {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   createdBy String
-  data      Json
   postId    String
 
-  user          User        @relation(fields: [createdBy], references: [id])
-  post          Post        @relation("PostRevisions", fields: [postId], references: [id])
-  latestedPost  Post?       @relation("PostLatestRevision")
-  publishedPost Post?       @relation("PostPublishedRevision")
-  postReview    PostReview?
+  user            User             @relation(fields: [createdBy], references: [id])
+  post            Post             @relation("PostRevisions", fields: [postId], references: [id])
+  latestedPost    Post?            @relation("PostLatestRevision")
+  publishedPost   Post?            @relation("PostPublishedRevision")
+  postReview      PostReview?
+  revisionAuthors RevisionAuthor[]
+  revisonTags     RevisonTag[]
+  detail          RevisionDetail   @relation(fields: [id], references: [revisionId])
+}
+
+model RevisionDetail {
+  id                      String         @id @default(uuid())
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+  createdBy               String
+  revisionId              String         @unique
+  slug                    String         @unique
+  title                   String
+  imageLight              String
+  imageDark               String
+  coverLight              String
+  coverDark               String
+  content                 String
+  note                    String?
+  blockContent            Json
+  seoTitle                String
+  seoDescription          String
+  seoKeyword              String
+  seoImage                String
+  seoslug                 String
+  altImage                String
+  selectedTokens          String[]
+  universalLink           String
+  designer                String
+  showDisclaimer          Boolean
+  pdfContent              String
+  domain                  String
+  youtubeUrl              String?
+  videoDuration           String?
+  backgroundColor         String
+  backgroundGradientLight String
+  backgroundGradientDark  String
+  onlySigninUser          Boolean
+  showAudio               Boolean
+  PostRevision            PostRevision[]
 }
 
 model PostAuthor {
@@ -81,8 +175,22 @@ model PostAuthor {
   postId    String
 
   post Post @relation(fields: [postId], references: [id])
+  user User @relation(fields: [createdBy], references: [id])
 
   @@unique([createdBy, postId])
+}
+
+model RevisionAuthor {
+  id         String   @id @default(uuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  createdBy  String
+  revisionId String
+
+  revision PostRevision @relation(fields: [revisionId], references: [id])
+  user     User         @relation(fields: [createdBy], references: [id])
+
+  @@unique([createdBy, revisionId])
 }
 
 model PostReview {
