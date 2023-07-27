@@ -13,7 +13,7 @@ enum UserRole {
   USER
 }
 
-enum PostLocale {
+enum Locale {
   GB
   VI
 }
@@ -22,6 +22,18 @@ enum PostType {
   NORMAL
   LONGFORM
   VIDEO
+}
+
+enum TableField {
+  title
+  slug
+  url
+  description
+}
+
+enum ArticleType {
+  TAG
+  LINK
 }
 
 // post: id, ownerPost, postRevisionID
@@ -37,37 +49,60 @@ model User {
   updatedAt DateTime @updatedAt
   createdBy String?
 
-  role            UserRole         @default(USER)
+  role            UserRole                 @default(USER)
   posts           Post[]
   postRevisions   PostRevision[]
   postSchedules   PostSchedule[]
   postReviews     PostReview[]
-  revisionAuthors RevisionAuthor[]
-  postAuthors     PostAuthor[]
-  Tag             Tag[]
+  revisionAuthors PostRevisionsOnAuthors[]
+  postAuthors     PostsOnAuthors[]
 }
 
 model Tag {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  createdBy String
-  title     Json
+  createdBy String?
   name      String
   orgId     String
 
-  user       User         @relation(fields: [createdBy], references: [id])
-  postTags   PostTag[]
-  RevisonTag RevisonTag[]
+  postTags    PostsOnTags[]
+  revisonTags PostRevisonsOnTags[]
+  titles      FieldLocale[]
+  portals     PortalSubsOnTags[]
 
   @@unique([orgId, name])
 }
 
-model PostTag {
+model FieldLocale {
+  id             String     @id @default(uuid())
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  createdBy      String?
+  tagId          String?
+  portalId       String?
+  portalSubId    String?
+  linkExternalId String?
+  lang           Locale
+  field          TableField
+  value          String
+
+  tag          Tag?          @relation(fields: [tagId], references: [id])
+  portal       Portal?       @relation(fields: [portalId], references: [id])
+  portalSub    PortalSub?    @relation(fields: [portalSubId], references: [id])
+  linkExternal LinkExternal? @relation(fields: [linkExternalId], references: [id])
+
+  @@unique([tagId, lang, field])
+  @@unique([portalId, lang, field])
+  @@unique([portalSubId, lang, field])
+  @@unique([linkExternalId, lang, field])
+}
+
+model PostsOnTags {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  createdBy String
+  createdBy String?
   postId    String
   tagId     String
 
@@ -77,11 +112,11 @@ model PostTag {
   @@unique([postId, tagId])
 }
 
-model RevisonTag {
+model PostRevisonsOnTags {
   id         String   @id @default(uuid())
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  createdBy  String
+  createdBy  String?
   revisionId String
   tagId      String
 
@@ -91,26 +126,53 @@ model RevisonTag {
   @@unique([revisionId, tagId])
 }
 
-model Post {
-  id                  String     @id @default(uuid())
-  createdAt           DateTime   @default(now())
-  updatedAt           DateTime   @updatedAt
-  createdBy           String
-  locale              PostLocale @default(GB)
-  publishedRevisionId String?    @unique
-  latestedRevisionId  String?    @unique
-  primaryId           String?
-  type                PostType   @default(NORMAL)
+model PostsOnAuthors {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String
+  postId    String
 
-  primary           Post?          @relation("PostLocalization", fields: [primaryId], references: [id])
-  locales           Post[]         @relation("PostLocalization")
-  user              User           @relation(fields: [createdBy], references: [id])
-  authors           PostAuthor[]
+  post Post @relation(fields: [postId], references: [id])
+  user User @relation(fields: [createdBy], references: [id])
+
+  @@unique([createdBy, postId])
+}
+
+model PostRevisionsOnAuthors {
+  id         String   @id @default(uuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  createdBy  String
+  revisionId String
+
+  revision PostRevision @relation(fields: [revisionId], references: [id])
+  user     User         @relation(fields: [createdBy], references: [id])
+
+  @@unique([createdBy, revisionId])
+}
+
+model Post {
+  id                  String   @id @default(uuid())
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  createdBy           String
+  locale              Locale   @default(GB)
+  publishedRevisionId String?  @unique
+  latestedRevisionId  String?  @unique
+  primaryId           String?
+  type                PostType @default(NORMAL)
+
+  primary           Post?               @relation("PostLocalization", fields: [primaryId], references: [id])
+  locales           Post[]              @relation("PostLocalization")
+  user              User                @relation(fields: [createdBy], references: [id])
+  authors           PostsOnAuthors[]
   reviews           PostReview[]
-  revisions         PostRevision[] @relation("PostRevisions")
-  latestedRevision  PostRevision?  @relation("PostLatestRevision", fields: [latestedRevisionId], references: [id])
-  publishedRevision PostRevision?  @relation("PostPublishedRevision", fields: [publishedRevisionId], references: [id])
-  postTags          PostTag[]
+  revisions         PostRevision[]      @relation("PostRevisions")
+  latestedRevision  PostRevision?       @relation("PostLatestRevision", fields: [latestedRevisionId], references: [id])
+  publishedRevision PostRevision?       @relation("PostPublishedRevision", fields: [publishedRevisionId], references: [id])
+  tags              PostsOnTags[]
+  portals           PortalSubsOnPosts[]
 }
 
 model PostRevision {
@@ -120,23 +182,23 @@ model PostRevision {
   createdBy String
   postId    String
 
-  user            User             @relation(fields: [createdBy], references: [id])
-  post            Post             @relation("PostRevisions", fields: [postId], references: [id])
-  latestedPost    Post?            @relation("PostLatestRevision")
-  publishedPost   Post?            @relation("PostPublishedRevision")
+  user            User                     @relation(fields: [createdBy], references: [id])
+  post            Post                     @relation("PostRevisions", fields: [postId], references: [id])
+  latestedPost    Post?                    @relation("PostLatestRevision")
+  publishedPost   Post?                    @relation("PostPublishedRevision")
   postReview      PostReview?
-  revisionAuthors RevisionAuthor[]
-  revisonTags     RevisonTag[]
-  detail          RevisionDetail   @relation(fields: [id], references: [revisionId])
+  revisionAuthors PostRevisionsOnAuthors[]
+  revisonTags     PostRevisonsOnTags[]
+  data            RevisionData?
 }
 
-model RevisionDetail {
-  id                      String         @id @default(uuid())
-  createdAt               DateTime       @default(now())
-  updatedAt               DateTime       @updatedAt
+model RevisionData {
+  id                      String       @id @default(uuid())
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
   createdBy               String
-  revisionId              String         @unique
-  slug                    String         @unique
+  revisionId              String       @unique
+  slug                    String       @unique
   title                   String
   imageLight              String
   imageDark               String
@@ -164,33 +226,8 @@ model RevisionDetail {
   backgroundGradientDark  String
   onlySigninUser          Boolean
   showAudio               Boolean
-  PostRevision            PostRevision[]
-}
-
-model PostAuthor {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  createdBy String
-  postId    String
-
-  post Post @relation(fields: [postId], references: [id])
-  user User @relation(fields: [createdBy], references: [id])
-
-  @@unique([createdBy, postId])
-}
-
-model RevisionAuthor {
-  id         String   @id @default(uuid())
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  createdBy  String
-  revisionId String
-
-  revision PostRevision @relation(fields: [revisionId], references: [id])
-  user     User         @relation(fields: [createdBy], references: [id])
-
-  @@unique([createdBy, revisionId])
+  postRevisionId          String       @unique
+  postRevision            PostRevision @relation(fields: [postRevisionId], references: [id])
 }
 
 model PostReview {
@@ -221,4 +258,73 @@ model PostSchedule {
 
   user       User       @relation(fields: [createdBy], references: [id])
   postReview PostReview @relation(fields: [postReviewId], references: [id])
+}
+
+model Portal {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  orgId     String
+  order     Int
+  isAlpha   Boolean  @default(false)
+
+  PortalSub PortalSub[]
+  data      FieldLocale[] // title, slug
+}
+
+model PortalSub {
+  id          String      @id @default(uuid())
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdBy   String?
+  portalId    String
+  order       Int
+  articleType ArticleType
+
+  portal        Portal              @relation(fields: [portalId], references: [id])
+  data          FieldLocale[] // title, slug
+  linkExternals LinkExternal[]
+  linkInternals PortalSubsOnPosts[]
+  tags          PortalSubsOnTags[]
+}
+
+model PortalSubsOnPosts {
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+  postId      String
+  portalSubId String
+
+  post      Post      @relation(fields: [postId], references: [id])
+  portalSub PortalSub @relation(fields: [portalSubId], references: [id])
+
+  @@unique([portalSubId, postId])
+}
+
+model PortalSubsOnTags {
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+  tagId       String
+  portalSubId String
+
+  tag       Tag       @relation(fields: [tagId], references: [id])
+  portalSub PortalSub @relation(fields: [portalSubId], references: [id])
+
+  @@unique([portalSubId, tagId])
+}
+
+model LinkExternal {
+  id          String        @id @default(uuid())
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  createdBy   String?
+  portalSubId String
+  image       String
+  data        FieldLocale[] // url, title, description
+
+  portalSub PortalSub @relation(fields: [portalSubId], references: [id])
 }
