@@ -59,6 +59,7 @@ model User {
   revisionAuthors PostRevisionsOnAuthors[]
   postAuthors     PostsOnAuthors[]
   organizations   Organization[]
+  roles           UsersOnRoles[]
 }
 
 model Tag {
@@ -363,6 +364,7 @@ model Organization {
   settings SettingOrganizaion[]
   tags     Tag[]
   portals  Portal[]
+  roles    Role[]
 }
 
 model SettingOrganizaion {
@@ -388,7 +390,49 @@ model Social {
   name      String
   url       String
 
-  org Organization @relation(fields: [orgId], references: [id])
+  organization Organization @relation(fields: [orgId], references: [id])
 
   @@unique([orgId, name])
+}
+
+model UsersOnRoles {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  userId    String
+  roleId    String
+
+  user User @relation(fields: [userId], references: [id])
+  role Role @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, roleId])
+}
+
+model Role {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  name      String
+  orgId     String
+
+  organization Organization   @relation(fields: [orgId], references: [id])
+  permissions  Permission[]
+  users        UsersOnRoles[]
+
+  @@unique([orgId, name])
+}
+
+model Permission {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  name      String
+  roleId    String
+
+  role Role @relation(fields: [roleId], references: [id])
+
+  @@unique([roleId, name])
 }
