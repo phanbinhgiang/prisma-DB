@@ -24,11 +24,13 @@ enum PostType {
   VIDEO
 }
 
-enum TableField {
+enum TableFieldLocale {
   title
   slug
   url
   description
+  content
+  link
 }
 
 enum ArticleType {
@@ -56,6 +58,7 @@ model User {
   postReviews     PostReview[]
   revisionAuthors PostRevisionsOnAuthors[]
   postAuthors     PostsOnAuthors[]
+  organizations   Organization[]
 }
 
 model Tag {
@@ -66,25 +69,26 @@ model Tag {
   name      String
   orgId     String
 
-  postTags    PostsOnTags[]
-  revisonTags PostRevisonsOnTags[]
-  titles      FieldLocale[]
-  portals     PortalSubsOnTags[]
+  organization Organization         @relation(fields: [orgId], references: [id])
+  postTags     PostsOnTags[]
+  revisonTags  PostRevisonsOnTags[]
+  titles       FieldLocale[]
+  portals      PortalSubsOnTags[]
 
   @@unique([orgId, name])
 }
 
 model FieldLocale {
-  id             String     @id @default(uuid())
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  id             String           @id @default(uuid())
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
   createdBy      String?
   tagId          String?
   portalId       String?
   portalSubId    String?
   linkExternalId String?
   lang           Locale
-  field          TableField
+  field          TableFieldLocale
   value          String
 
   tag          Tag?          @relation(fields: [tagId], references: [id])
@@ -162,6 +166,7 @@ model Post {
   latestedRevisionId  String?  @unique
   primaryId           String?
   type                PostType @default(NORMAL)
+  orgId               String
 
   primary           Post?               @relation("PostLocalization", fields: [primaryId], references: [id])
   locales           Post[]              @relation("PostLocalization")
@@ -171,6 +176,7 @@ model Post {
   revisions         PostRevision[]      @relation("PostRevisions")
   latestedRevision  PostRevision?       @relation("PostLatestRevision", fields: [latestedRevisionId], references: [id])
   publishedRevision PostRevision?       @relation("PostPublishedRevision", fields: [publishedRevisionId], references: [id])
+  organization      Organization        @relation(fields: [orgId], references: [id])
   tags              PostsOnTags[]
   portals           PortalSubsOnPosts[]
 }
@@ -193,12 +199,12 @@ model PostRevision {
 }
 
 model RevisionData {
-  id                      String       @id @default(uuid())
-  createdAt               DateTime     @default(now())
-  updatedAt               DateTime     @updatedAt
+  id                      String   @id @default(uuid())
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
   createdBy               String
-  revisionId              String       @unique
-  slug                    String       @unique
+  revisionId              String   @unique
+  slug                    String   @unique
   title                   String
   imageLight              String
   imageDark               String
@@ -226,8 +232,9 @@ model RevisionData {
   backgroundGradientDark  String
   onlySigninUser          Boolean
   showAudio               Boolean
-  postRevisionId          String       @unique
-  postRevision            PostRevision @relation(fields: [postRevisionId], references: [id])
+  postRevisionId          String   @unique
+
+  postRevision PostRevision @relation(fields: [postRevisionId], references: [id])
 }
 
 model PostReview {
@@ -269,8 +276,9 @@ model Portal {
   order     Int
   isAlpha   Boolean  @default(false)
 
-  PortalSub PortalSub[]
-  data      FieldLocale[] // title, slug
+  organization Organization  @relation(fields: [orgId], references: [id])
+  PortalSub    PortalSub[]
+  data         FieldLocale[] // title, slug
 }
 
 model PortalSub {
@@ -327,4 +335,60 @@ model LinkExternal {
   data        FieldLocale[] // url, title, description
 
   portalSub PortalSub @relation(fields: [portalSubId], references: [id])
+}
+
+model Organization {
+  id              String   @id @default(uuid())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  createdBy       String?
+  name            String
+  description     String
+  image           String
+  logo            String
+  logoLight       String
+  favicon         String
+  icon            String
+  coverImage      String
+  userName        String   @unique
+  domain          String
+  locales         Locale[]
+  socialShare     Json
+  showDescription Boolean  @default(true)
+  type            String?
+
+  user     User?                @relation(fields: [createdBy], references: [id])
+  posts    Post[]
+  socials  Social[]
+  settings SettingOrganizaion[]
+  tags     Tag[]
+  portals  Portal[]
+}
+
+model SettingOrganizaion {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  orgId     String
+  name      String
+  value     String
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, name])
+}
+
+model Social {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  orgId     String
+  name      String
+  url       String
+
+  org Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, name])
 }
