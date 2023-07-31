@@ -44,6 +44,24 @@ enum MenuType {
   Series
 }
 
+enum InteractionPostType {
+  VIEW
+  LIKE
+  BOOKMARK
+  RATING
+  COMMENT
+}
+
+enum InteractionOrganizationType {
+  FOLLOW
+  LIKE
+}
+
+enum InteractionSeriesType {
+  FOLLOW
+  LIKE
+}
+
 // post: id, ownerPost, postRevisionID
 // postRevisions: postId (ref Post), id , owner
 // postReview: postId, postRevisionID
@@ -57,18 +75,21 @@ model User {
   updatedAt DateTime @updatedAt
   createdBy String?
 
-  role            UserRole                 @default(USER)
-  posts           Post[]
-  postRevisions   PostRevision[]
-  postSchedules   PostSchedule[]
-  postReviews     PostReview[]
-  revisionAuthors PostRevisionsOnAuthors[]
-  postAuthors     PostsOnAuthors[]
-  organizations   Organization[]
-  roles           UsersOnRoles[]
-  menus           Menu[]
-  coursesMembers  CoursesOnMembers[]       @relation("CourseMembers")
-  coursesBuyers   CoursesOnMembers[]       @relation("CourseBuyers")
+  role                     UserRole                  @default(USER)
+  posts                    Post[]
+  postRevisions            PostRevision[]
+  postSchedules            PostSchedule[]
+  postReviews              PostReview[]
+  revisionAuthors          PostRevisionsOnAuthors[]
+  postAuthors              PostsOnAuthors[]
+  organizations            Organization[]
+  roles                    UsersOnRoles[]
+  menus                    Menu[]
+  coursesMembers           CoursesOnMembers[]        @relation("CourseMembers")
+  coursesBuyers            CoursesOnMembers[]        @relation("CourseBuyers")
+  interactionPosts         InteractionPost[]
+  interactionOrganizations InteractionOrganization[]
+  interactionSeries        InteractionSeries[]
 }
 
 model Tag {
@@ -151,11 +172,12 @@ model PostsOnAuthors {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  createdBy String
+  createdBy String?
   postId    String
+  userId    String
 
   post Post @relation(fields: [postId], references: [id])
-  user User @relation(fields: [createdBy], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@unique([createdBy, postId])
 }
@@ -185,17 +207,18 @@ model Post {
   type                PostType @default(NORMAL)
   orgId               String
 
-  primary           Post?               @relation("PostLocalization", fields: [primaryId], references: [id])
-  locales           Post[]              @relation("PostLocalization")
-  user              User                @relation(fields: [createdBy], references: [id])
-  authors           PostsOnAuthors[]
-  reviews           PostReview[]
-  revisions         PostRevision[]      @relation("PostRevisions")
-  latestedRevision  PostRevision?       @relation("PostLatestRevision", fields: [latestedRevisionId], references: [id])
-  publishedRevision PostRevision?       @relation("PostPublishedRevision", fields: [publishedRevisionId], references: [id])
-  organization      Organization        @relation(fields: [orgId], references: [id])
-  tags              PostsOnTags[]
-  portals           PortalSubsOnPosts[]
+  primary              Post?               @relation("PostLocalization", fields: [primaryId], references: [id])
+  locales              Post[]              @relation("PostLocalization")
+  user                 User                @relation(fields: [createdBy], references: [id])
+  authors              PostsOnAuthors[]
+  reviews              PostReview[]
+  revisions            PostRevision[]      @relation("PostRevisions")
+  latestedRevision     PostRevision?       @relation("PostLatestRevision", fields: [latestedRevisionId], references: [id])
+  publishedRevision    PostRevision?       @relation("PostPublishedRevision", fields: [publishedRevisionId], references: [id])
+  organization         Organization        @relation(fields: [orgId], references: [id])
+  tags                 PostsOnTags[]
+  portals              PortalSubsOnPosts[]
+  interactionViewPosts InteractionPost[]
 }
 
 model TagsOnMenus {
@@ -239,11 +262,12 @@ model Menu {
   arrTitleLatinize String[]
   image            String?
 
-  user         User?         @relation(fields: [createdBy], references: [id])
-  organization Organization  @relation(fields: [orgId], references: [id])
-  portals      Portal[]
-  menuItems    MenuItem[]
-  tags         TagsOnMenus[]
+  user              User?               @relation(fields: [createdBy], references: [id])
+  organization      Organization        @relation(fields: [orgId], references: [id])
+  portals           Portal[]
+  menuItems         MenuItem[]
+  tags              TagsOnMenus[]
+  interactionSeries InteractionSeries[]
 
   @@unique([orgId, order])
 }
@@ -447,15 +471,16 @@ model Organization {
   showDescription Boolean  @default(true)
   type            String?
 
-  user     User?                @relation(fields: [createdBy], references: [id])
-  posts    Post[]
-  socials  Social[]
-  settings SettingOrganizaion[]
-  tags     Tag[]
-  portals  Portal[]
-  roles    Role[]
-  menus    Menu[]
-  courses  Course[]
+  user         User?                     @relation(fields: [createdBy], references: [id])
+  posts        Post[]
+  socials      Social[]
+  settings     SettingOrganizaion[]
+  tags         Tag[]
+  portals      Portal[]
+  roles        Role[]
+  menus        Menu[]
+  courses      Course[]
+  interactions InteractionOrganization[]
 }
 
 model SettingOrganizaion {
@@ -634,4 +659,48 @@ model Document {
   lessonId  String
 
   lesson Lesson @relation(fields: [lessonId], references: [id])
+}
+
+model InteractionPost {
+  id              String              @id @default(uuid())
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  createdBy       String?
+  postId          String
+  userId          String
+  type            InteractionPostType
+  rating          Int?
+  comment         String?
+  fatherCommentId String?
+
+  fatherComment   InteractionPost?  @relation("RelatedComment", fields: [fatherCommentId], references: [id])
+  relatedComments InteractionPost[] @relation("RelatedComment")
+  post            Post              @relation(fields: [postId], references: [id])
+  user            User              @relation(fields: [userId], references: [id])
+}
+
+model InteractionOrganization {
+  id        String                      @id @default(uuid())
+  createdAt DateTime                    @default(now())
+  updatedAt DateTime                    @updatedAt
+  createdBy String?
+  orgId     String
+  userId    String
+  type      InteractionOrganizationType
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+}
+
+model InteractionSeries {
+  id        String                @id @default(uuid())
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+  createdBy String?
+  seriesId  String
+  userId    String
+  type      InteractionSeriesType
+
+  series Menu @relation(fields: [seriesId], references: [id])
+  user   User @relation(fields: [userId], references: [id])
 }
