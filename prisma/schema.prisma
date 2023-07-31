@@ -67,6 +67,8 @@ model User {
   organizations   Organization[]
   roles           UsersOnRoles[]
   menus           Menu[]
+  coursesMembers  CoursesOnMembers[]       @relation("CourseMembers")
+  coursesBuyers   CoursesOnMembers[]       @relation("CourseBuyers")
 }
 
 model Tag {
@@ -453,6 +455,7 @@ model Organization {
   portals  Portal[]
   roles    Role[]
   menus    Menu[]
+  courses  Course[]
 }
 
 model SettingOrganizaion {
@@ -523,4 +526,112 @@ model Permission {
   role Role @relation(fields: [roleId], references: [id])
 
   @@unique([roleId, name])
+}
+
+model Course {
+  id             String   @id @default(uuid())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  createdBy      String?
+  slug           String   @unique
+  title          String
+  imageLight     String
+  imageDark      String
+  description    String
+  orgId          String
+  lang           Locale   @default(GB)
+  utilities      String[]
+  price          Float
+  specialPrice   Float
+  seoTitle       String
+  seoDescription String
+  seoKeyword     String
+  seoslug        String
+  startAt        DateTime
+  endAt          DateTime
+  status         String
+
+  organization Organization       @relation(fields: [orgId], references: [id])
+  members      CoursesOnMembers[]
+  chapters     Chapter[]
+}
+
+model CoursesOnMembers {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  userId    String
+  courseId  String
+  message   String?
+  buyerId   String
+
+  user    User               @relation("CourseMembers", fields: [userId], references: [id])
+  buyer   User               @relation("CourseBuyers", fields: [buyerId], references: [id])
+  Course  Course             @relation(fields: [courseId], references: [id])
+  lessons LessonsOnMembers[]
+
+  @@unique([userId, courseId])
+}
+
+model Chapter {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  courseId  String
+  title     String
+  order     Int
+  lessons   Lesson[]
+
+  course Course @relation(fields: [courseId], references: [id])
+
+  @@unique([courseId, order])
+}
+
+model LessonsOnMembers {
+  id             String   @id @default(uuid())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  createdBy      String?
+  courseMemberId String
+  lessonId       String
+  courseId       String
+  status         String
+
+  courseMember CoursesOnMembers @relation(fields: [courseMemberId], references: [id])
+  lesson       Lesson           @relation(fields: [lessonId], references: [id])
+
+  @@unique([courseMemberId, lessonId])
+}
+
+model Lesson {
+  id          String     @id @default(uuid())
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  createdBy   String?
+  chapterId   String
+  title       String
+  order       Int
+  video       String
+  discription String
+  duration    String
+  documents   Document[]
+
+  chapter Chapter            @relation(fields: [chapterId], references: [id])
+  members LessonsOnMembers[]
+
+  @@unique([chapterId, order])
+}
+
+model Document {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  title     String
+  link      String
+  lessonId  String
+
+  lesson Lesson @relation(fields: [lessonId], references: [id])
 }
