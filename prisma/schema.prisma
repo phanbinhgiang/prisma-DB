@@ -38,6 +38,12 @@ enum ArticleType {
   LINK
 }
 
+enum MenuType {
+  Portal
+  Menu
+  Series
+}
+
 // post: id, ownerPost, postRevisionID
 // postRevisions: postId (ref Post), id , owner
 // postReview: postId, postRevisionID
@@ -60,6 +66,7 @@ model User {
   postAuthors     PostsOnAuthors[]
   organizations   Organization[]
   roles           UsersOnRoles[]
+  menus           Menu[]
 }
 
 model Tag {
@@ -71,10 +78,12 @@ model Tag {
   orgId     String
 
   organization Organization         @relation(fields: [orgId], references: [id])
-  postTags     PostsOnTags[]
-  revisonTags  PostRevisonsOnTags[]
-  titles       FieldLocale[]
+  posts        PostsOnTags[]
+  revisons     PostRevisonsOnTags[]
+  titles       FieldLocale[] // title
   portals      PortalSubsOnTags[]
+  menus        TagsOnMenus[]
+  menuItems    TagsOnMenuItems[]
 
   @@unique([orgId, name])
 }
@@ -88,6 +97,8 @@ model FieldLocale {
   portalId       String?
   portalSubId    String?
   linkExternalId String?
+  menuId         String?
+  menuItemId     String?
   lang           Locale
   field          TableFieldLocale
   value          String
@@ -96,11 +107,14 @@ model FieldLocale {
   portal       Portal?       @relation(fields: [portalId], references: [id])
   portalSub    PortalSub?    @relation(fields: [portalSubId], references: [id])
   linkExternal LinkExternal? @relation(fields: [linkExternalId], references: [id])
+  menu         Menu?         @relation(fields: [menuId], references: [id])
+  menuItem     MenuItem?     @relation(fields: [menuItemId], references: [id])
 
   @@unique([tagId, lang, field])
   @@unique([portalId, lang, field])
   @@unique([portalSubId, lang, field])
   @@unique([linkExternalId, lang, field])
+  @@unique([menuId, lang, field])
 }
 
 model PostsOnTags {
@@ -180,6 +194,73 @@ model Post {
   organization      Organization        @relation(fields: [orgId], references: [id])
   tags              PostsOnTags[]
   portals           PortalSubsOnPosts[]
+}
+
+model TagsOnMenus {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  tagId     String
+  menuId    String
+
+  tag        Tag     @relation(fields: [tagId], references: [id])
+  menu       Menu    @relation(fields: [menuId], references: [id])
+  menuItemId String?
+
+  @@unique([tagId, menuId])
+}
+
+model TagsOnMenuItems {
+  id         String   @id @default(uuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  createdBy  String?
+  tagId      String
+  menuItemId String
+
+  tag      Tag      @relation(fields: [tagId], references: [id])
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id])
+
+  @@unique([tagId, menuItemId])
+}
+
+model Menu {
+  id               String        @id @default(uuid())
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  createdBy        String?
+  orgId            String
+  type             MenuType
+  order            Int
+  dataLocale       FieldLocale[] // title, slug, description
+  arrTitleLatinize String[]
+  image            String?
+
+  user         User?         @relation(fields: [createdBy], references: [id])
+  organization Organization  @relation(fields: [orgId], references: [id])
+  portals      Portal[]
+  menuItems    MenuItem[]
+  tags         TagsOnMenus[]
+
+  @@unique([orgId, order])
+}
+
+// series or menu child
+model MenuItem {
+  id               String        @id @default(uuid())
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  createdBy        String?
+  menuId           String
+  itemOrder        Int
+  dataLocale       FieldLocale[] // title, slug, description
+  arrTitleLatinize String[]
+
+  menu Menu              @relation(fields: [menuId], references: [id])
+  tags TagsOnMenuItems[]
+
+  @@unique([menuId, itemOrder])
 }
 
 model PostRevision {
@@ -276,10 +357,14 @@ model Portal {
   orgId     String
   order     Int
   isAlpha   Boolean  @default(false)
+  menuId    String
 
   organization Organization  @relation(fields: [orgId], references: [id])
+  menu         Menu          @relation(fields: [menuId], references: [id])
   PortalSub    PortalSub[]
-  data         FieldLocale[] // title, slug
+  dataLocale   FieldLocale[] // title, slug
+
+  @@unique([orgId, order])
 }
 
 model PortalSub {
@@ -292,10 +377,12 @@ model PortalSub {
   articleType ArticleType
 
   portal        Portal              @relation(fields: [portalId], references: [id])
-  data          FieldLocale[] // title, slug
+  dataLocale    FieldLocale[] // title, slug
   linkExternals LinkExternal[]
   linkInternals PortalSubsOnPosts[]
   tags          PortalSubsOnTags[]
+
+  @@unique([portalId, order])
 }
 
 model PortalSubsOnPosts {
@@ -333,7 +420,7 @@ model LinkExternal {
   createdBy   String?
   portalSubId String
   image       String
-  data        FieldLocale[] // url, title, description
+  dataLocale  FieldLocale[] // url, title, description
 
   portalSub PortalSub @relation(fields: [portalSubId], references: [id])
 }
@@ -365,6 +452,7 @@ model Organization {
   tags     Tag[]
   portals  Portal[]
   roles    Role[]
+  menus    Menu[]
 }
 
 model SettingOrganizaion {
