@@ -80,13 +80,13 @@ model User {
   postRevisions            PostRevision[]
   postSchedules            PostSchedule[]
   postReviews              PostReview[]
-  revisionAuthors          PostRevisionsOnAuthors[]
-  postAuthors              PostsOnAuthors[]
+  revisionAuthors          PostRevisionsAuthors[]
+  postAuthors              PostsAuthors[]
   organizations            Organization[]
-  roles                    UsersOnRoles[]
+  roles                    UsersRoles[]
   menus                    Menu[]
-  coursesMembers           CoursesOnMembers[]        @relation("CourseMembers")
-  coursesBuyers            CoursesOnMembers[]        @relation("CourseBuyers")
+  coursesMembers           CoursesMembers[]          @relation("CourseMembers")
+  coursesBuyers            CoursesMembers[]          @relation("CourseBuyers")
   interactionPosts         InteractionPost[]
   interactionOrganizations InteractionOrganization[]
   interactionSeries        InteractionSeries[]
@@ -100,13 +100,13 @@ model Tag {
   name      String
   orgId     String
 
-  organization Organization         @relation(fields: [orgId], references: [id])
-  posts        PostsOnTags[]
-  revisons     PostRevisonsOnTags[]
+  organization Organization       @relation(fields: [orgId], references: [id])
+  posts        PostsTags[]
+  revisons     PostRevisonsTags[]
   titles       FieldLocale[] // title
-  portals      PortalSubsOnTags[]
-  menus        TagsOnMenus[]
-  menuItems    TagsOnMenuItems[]
+  portals      PortalSubsTags[]
+  menus        TagsMenus[]
+  menuItems    TagsMenuItems[]
 
   @@unique([orgId, name])
 }
@@ -140,7 +140,7 @@ model FieldLocale {
   @@unique([menuId, lang, field])
 }
 
-model PostsOnTags {
+model PostsTags {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -154,7 +154,7 @@ model PostsOnTags {
   @@unique([postId, tagId])
 }
 
-model PostRevisonsOnTags {
+model PostRevisonsTags {
   id         String   @id @default(uuid())
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -168,7 +168,7 @@ model PostRevisonsOnTags {
   @@unique([revisionId, tagId])
 }
 
-model PostsOnAuthors {
+model PostsAuthors {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -182,7 +182,7 @@ model PostsOnAuthors {
   @@unique([createdBy, postId])
 }
 
-model PostRevisionsOnAuthors {
+model PostRevisionsAuthors {
   id         String   @id @default(uuid())
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -207,21 +207,21 @@ model Post {
   type                PostType @default(NORMAL)
   orgId               String
 
-  primary              Post?               @relation("PostLocalization", fields: [primaryId], references: [id])
-  locales              Post[]              @relation("PostLocalization")
-  user                 User                @relation(fields: [createdBy], references: [id])
-  authors              PostsOnAuthors[]
+  primary              Post?             @relation("PostLocalization", fields: [primaryId], references: [id])
+  locales              Post[]            @relation("PostLocalization")
+  user                 User              @relation(fields: [createdBy], references: [id])
+  authors              PostsAuthors[]
   reviews              PostReview[]
-  revisions            PostRevision[]      @relation("PostRevisions")
-  latestedRevision     PostRevision?       @relation("PostLatestRevision", fields: [latestedRevisionId], references: [id])
-  publishedRevision    PostRevision?       @relation("PostPublishedRevision", fields: [publishedRevisionId], references: [id])
-  organization         Organization        @relation(fields: [orgId], references: [id])
-  tags                 PostsOnTags[]
-  portals              PortalSubsOnPosts[]
+  revisions            PostRevision[]    @relation("PostRevisions")
+  latestedRevision     PostRevision?     @relation("PostLatestRevision", fields: [latestedRevisionId], references: [id])
+  publishedRevision    PostRevision?     @relation("PostPublishedRevision", fields: [publishedRevisionId], references: [id])
+  organization         Organization      @relation(fields: [orgId], references: [id])
+  tags                 PostsTags[]
+  portals              PortalSubsPosts[]
   interactionViewPosts InteractionPost[]
 }
 
-model TagsOnMenus {
+model TagsMenus {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -236,7 +236,7 @@ model TagsOnMenus {
   @@unique([tagId, menuId])
 }
 
-model TagsOnMenuItems {
+model TagsMenuItems {
   id         String   @id @default(uuid())
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -266,7 +266,7 @@ model Menu {
   organization      Organization        @relation(fields: [orgId], references: [id])
   portals           Portal[]
   menuItems         MenuItem[]
-  tags              TagsOnMenus[]
+  tags              TagsMenus[]
   interactionSeries InteractionSeries[]
 
   @@unique([orgId, order])
@@ -283,8 +283,8 @@ model MenuItem {
   dataLocale       FieldLocale[] // title, slug, description
   arrTitleLatinize String[]
 
-  menu Menu              @relation(fields: [menuId], references: [id])
-  tags TagsOnMenuItems[]
+  menu Menu            @relation(fields: [menuId], references: [id])
+  tags TagsMenuItems[]
 
   @@unique([menuId, itemOrder])
 }
@@ -296,17 +296,17 @@ model PostRevision {
   createdBy String
   postId    String
 
-  user            User                     @relation(fields: [createdBy], references: [id])
-  post            Post                     @relation("PostRevisions", fields: [postId], references: [id])
-  latestedPost    Post?                    @relation("PostLatestRevision")
-  publishedPost   Post?                    @relation("PostPublishedRevision")
+  user            User                   @relation(fields: [createdBy], references: [id])
+  post            Post                   @relation("PostRevisions", fields: [postId], references: [id])
+  latestedPost    Post?                  @relation("PostLatestRevision")
+  publishedPost   Post?                  @relation("PostPublishedRevision")
   postReview      PostReview?
-  revisionAuthors PostRevisionsOnAuthors[]
-  revisonTags     PostRevisonsOnTags[]
-  data            RevisionData?
+  revisionAuthors PostRevisionsAuthors[]
+  revisonTags     PostRevisonsTags[]
+  data            PostRevisionData?
 }
 
-model RevisionData {
+model PostRevisionData {
   id                      String   @id @default(uuid())
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
@@ -325,7 +325,7 @@ model RevisionData {
   seoDescription          String
   seoKeyword              String
   seoImage                String
-  seoslug                 String
+  seoSlug                 String
   altImage                String
   selectedTokens          String[]
   universalLink           String
@@ -355,10 +355,10 @@ model PostReview {
   approvedAt     DateTime?
   rejectedAt     DateTime?
 
-  post          Post           @relation(fields: [postId], references: [id])
-  user          User           @relation(fields: [createdBy], references: [id])
-  postRevision  PostRevision   @relation(fields: [postRevisionId], references: [id])
-  postSchedules PostSchedule[]
+  post          Post          @relation(fields: [postId], references: [id])
+  user          User          @relation(fields: [createdBy], references: [id])
+  postRevision  PostRevision  @relation(fields: [postRevisionId], references: [id])
+  postSchedules PostSchedule?
 
   @@unique([postId, postRevisionId])
 }
@@ -368,7 +368,7 @@ model PostSchedule {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   createdBy    String
-  postReviewId String
+  postReviewId String   @unique
   startAt      DateTime
 
   user       User       @relation(fields: [createdBy], references: [id])
@@ -402,16 +402,16 @@ model PortalSub {
   order       Int
   articleType ArticleType
 
-  portal        Portal              @relation(fields: [portalId], references: [id])
+  portal        Portal            @relation(fields: [portalId], references: [id])
   dataLocale    FieldLocale[] // title, slug
   linkExternals LinkExternal[]
-  linkInternals PortalSubsOnPosts[]
-  tags          PortalSubsOnTags[]
+  linkInternals PortalSubsPosts[]
+  tags          PortalSubsTags[]
 
   @@unique([portalId, order])
 }
 
-model PortalSubsOnPosts {
+model PortalSubsPosts {
   id          String   @id @default(uuid())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -425,7 +425,7 @@ model PortalSubsOnPosts {
   @@unique([portalSubId, postId])
 }
 
-model PortalSubsOnTags {
+model PortalSubsTags {
   id          String   @id @default(uuid())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -511,7 +511,7 @@ model Social {
   @@unique([orgId, name])
 }
 
-model UsersOnRoles {
+model UsersRoles {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -533,9 +533,9 @@ model Role {
   name      String
   orgId     String
 
-  organization Organization   @relation(fields: [orgId], references: [id])
+  organization Organization @relation(fields: [orgId], references: [id])
   permissions  Permission[]
-  users        UsersOnRoles[]
+  users        UsersRoles[]
 
   @@unique([orgId, name])
 }
@@ -576,12 +576,12 @@ model Course {
   endAt          DateTime
   status         String
 
-  organization Organization       @relation(fields: [orgId], references: [id])
-  members      CoursesOnMembers[]
+  organization Organization     @relation(fields: [orgId], references: [id])
+  members      CoursesMembers[]
   chapters     Chapter[]
 }
 
-model CoursesOnMembers {
+model CoursesMembers {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -591,10 +591,10 @@ model CoursesOnMembers {
   message   String?
   buyerId   String
 
-  user    User               @relation("CourseMembers", fields: [userId], references: [id])
-  buyer   User               @relation("CourseBuyers", fields: [buyerId], references: [id])
-  Course  Course             @relation(fields: [courseId], references: [id])
-  lessons LessonsOnMembers[]
+  user    User             @relation("CourseMembers", fields: [userId], references: [id])
+  buyer   User             @relation("CourseBuyers", fields: [buyerId], references: [id])
+  Course  Course           @relation(fields: [courseId], references: [id])
+  lessons LessonsMembers[]
 
   @@unique([userId, courseId])
 }
@@ -614,7 +614,7 @@ model Chapter {
   @@unique([courseId, order])
 }
 
-model LessonsOnMembers {
+model LessonsMembers {
   id             String   @id @default(uuid())
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -624,8 +624,8 @@ model LessonsOnMembers {
   courseId       String
   status         String
 
-  courseMember CoursesOnMembers @relation(fields: [courseMemberId], references: [id])
-  lesson       Lesson           @relation(fields: [lessonId], references: [id])
+  courseMember CoursesMembers @relation(fields: [courseMemberId], references: [id])
+  lesson       Lesson         @relation(fields: [lessonId], references: [id])
 
   @@unique([courseMemberId, lessonId])
 }
@@ -643,8 +643,8 @@ model Lesson {
   duration    String
   documents   Document[]
 
-  chapter Chapter            @relation(fields: [chapterId], references: [id])
-  members LessonsOnMembers[]
+  chapter Chapter          @relation(fields: [chapterId], references: [id])
+  members LessonsMembers[]
 
   @@unique([chapterId, order])
 }
