@@ -195,6 +195,18 @@ model PostRevisionsAuthors {
   @@unique([createdBy, revisionId])
 }
 
+model PostsSlugs {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  postId    String
+  slug      String   @unique
+
+  postPublish Post? @relation("PostSlugPublish")
+  post        Post  @relation("PostSlugList", fields: [postId], references: [id])
+}
+
 model Post {
   id                  String   @id @default(uuid())
   createdAt           DateTime @default(now())
@@ -206,6 +218,7 @@ model Post {
   primaryId           String?
   type                PostType @default(NORMAL)
   orgId               String
+  slugId              String?  @unique
 
   primary              Post?             @relation("PostLocalization", fields: [primaryId], references: [id])
   locales              Post[]            @relation("PostLocalization")
@@ -219,6 +232,8 @@ model Post {
   tags                 PostsTags[]
   portals              PortalSubsPosts[]
   interactionViewPosts InteractionPost[]
+  slugPublish          PostsSlugs?       @relation("PostSlugPublish", fields: [slugId], references: [id])
+  slugList             PostsSlugs[]      @relation("PostSlugList")
 }
 
 model TagsMenus {
@@ -312,7 +327,6 @@ model PostRevisionData {
   updatedAt               DateTime @updatedAt
   createdBy               String
   revisionId              String   @unique
-  slug                    String   @unique
   title                   String
   imageLight              String
   imageDark               String
