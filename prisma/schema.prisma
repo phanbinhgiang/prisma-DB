@@ -62,6 +62,12 @@ enum InteractionSeriesType {
   LIKE
 }
 
+enum OrganizationType {
+  NORMAL
+  NEWS
+  BLOG
+}
+
 // post: id, ownerPost, postRevisionID
 // postRevisions: postId (ref Post), id , owner
 // postReview: postId, postRevisionID
@@ -97,18 +103,15 @@ model Tag {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   createdBy String?
-  name      String
   orgId     String
 
   organization Organization       @relation(fields: [orgId], references: [id])
   posts        PostsTags[]
   revisons     PostRevisonsTags[]
-  titles       FieldLocale[] // title
-  portals      PortalSubsTags[]
+  titleLocale  FieldLocale[] // title multilanguage
+  portalSubs   PortalSubsTags[]
   menus        TagsMenus[]
   menuItems    TagsMenuItems[]
-
-  @@unique([orgId, name])
 }
 
 model FieldLocale {
@@ -224,13 +227,13 @@ model Post {
   locales              Post[]            @relation("PostLocalization")
   user                 User              @relation(fields: [createdBy], references: [id])
   authors              PostsAuthors[]
-  reviews              PostReview[]
-  revisions            PostRevision[]    @relation("PostRevisions")
+  postReviews          PostReview[]
+  postRevisions        PostRevision[]    @relation("PostRevisions")
   latestedRevision     PostRevision?     @relation("PostLatestRevision", fields: [latestedRevisionId], references: [id])
   publishedRevision    PostRevision?     @relation("PostPublishedRevision", fields: [publishedRevisionId], references: [id])
   organization         Organization      @relation(fields: [orgId], references: [id])
   tags                 PostsTags[]
-  portals              PortalSubsPosts[]
+  portalSubs           PortalSubsPosts[]
   interactionViewPosts InteractionPost[]
   slugPublish          PostsSlugs?       @relation("PostSlugPublish", fields: [slugId], references: [id])
   slugList             PostsSlugs[]      @relation("PostSlugList")
@@ -322,39 +325,22 @@ model PostRevision {
 }
 
 model PostRevisionData {
-  id                      String   @id @default(uuid())
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-  createdBy               String
-  revisionId              String   @unique
-  title                   String
-  imageLight              String
-  imageDark               String
-  coverLight              String
-  coverDark               String
-  content                 String
-  note                    String?
-  blockContent            Json
-  seoTitle                String
-  seoDescription          String
-  seoKeyword              String
-  seoImage                String
-  seoSlug                 String
-  altImage                String
-  selectedTokens          String[]
-  universalLink           String
-  designer                String
-  showDisclaimer          Boolean
-  pdfContent              String
-  domain                  String
-  youtubeUrl              String?
-  videoDuration           String?
-  backgroundColor         String
-  backgroundGradientLight String
-  backgroundGradientDark  String
-  onlySigninUser          Boolean
-  showAudio               Boolean
-  postRevisionId          String   @unique
+  id             String   @id @default(uuid())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  createdBy      String?
+  postRevisionId String   @unique
+  title          String
+  image          String
+  altImage       String // description image (html)
+  content        String
+  blockContent   Json // content editor
+  seo            Json // seoTitle, seoDescription, seoKeyword
+  youtubeUrl     String?
+  videoDuration  String?
+  background     Json // now use background color
+  onlySigninUser Boolean
+  showAudio      Boolean
 
   postRevision PostRevision @relation(fields: [postRevisionId], references: [id])
 }
@@ -466,24 +452,21 @@ model LinkExternal {
 }
 
 model Organization {
-  id              String   @id @default(uuid())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  createdBy       String?
-  name            String
-  description     String
-  image           String
-  logo            String
-  logoLight       String
-  favicon         String
-  icon            String
-  coverImage      String
-  userName        String   @unique
-  domain          String
-  locales         Locale[]
-  socialShare     Json
-  showDescription Boolean  @default(true)
-  type            String?
+  id          String           @id @default(uuid())
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  createdBy   String?
+  name        String
+  description String
+  image       String
+  logo        String
+  logoLight   String?
+  favicon     String
+  coverImage  String?
+  userName    String           @unique
+  domain      String?          @unique
+  locales     Locale[]
+  type        OrganizationType @default(NORMAL)
 
   user         User?                     @relation(fields: [createdBy], references: [id])
   posts        Post[]
@@ -504,7 +487,7 @@ model SettingOrganizaion {
   createdBy String?
   orgId     String
   name      String
-  value     String
+  value     Boolean
 
   organization Organization @relation(fields: [orgId], references: [id])
 
