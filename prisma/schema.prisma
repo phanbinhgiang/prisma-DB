@@ -211,17 +211,18 @@ model PostsSlugs {
 }
 
 model Post {
-  id                  String   @id @default(uuid())
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                  String    @id @default(uuid())
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
   createdBy           String
-  locale              Locale   @default(GB)
-  publishedRevisionId String?  @unique
-  latestedRevisionId  String?  @unique
+  locale              Locale    @default(GB)
+  publishedRevisionId String?   @unique
+  latestedRevisionId  String?   @unique
   primaryId           String?
-  type                PostType @default(NORMAL)
+  type                PostType  @default(NORMAL)
   orgId               String
-  slugId              String?  @unique
+  slugId              String?   @unique
+  deletedAt           DateTime?
 
   primary              Post?             @relation("PostLocalization", fields: [primaryId], references: [id])
   locales              Post[]            @relation("PostLocalization")
@@ -471,7 +472,7 @@ model Organization {
   user         User?                     @relation(fields: [createdBy], references: [id])
   posts        Post[]
   socials      Social[]
-  settings     SettingOrganization[]
+  settings     OrganizationSetting[]
   tags         Tag[]
   portals      Portal[]
   roles        Role[]
@@ -480,7 +481,7 @@ model Organization {
   interactions InteractionOrganization[]
 }
 
-model SettingOrganization {
+model OrganizationSetting {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
