@@ -1,5 +1,5 @@
 datasource db {
-  provider = "postgresql"
+  provider = "postgres"
   url      = env("DATABASE_URL")
 }
 
@@ -7,21 +7,20 @@ generator client {
   provider = "prisma-client-js"
 }
 
-enum UserRole {
-  ADMINISTRATOR
-  MANAGER
-  USER
-}
-
-enum Locale {
-  GB
-  VI
+enum UserRoleType {
+  ADMIN
+  MEMBER
 }
 
 enum PostType {
   NORMAL
   LONGFORM
   VIDEO
+}
+
+enum Locale {
+  GB
+  VI
 }
 
 enum TableFieldLocale {
@@ -52,7 +51,7 @@ enum InteractionPostType {
   COMMENT
 }
 
-enum InteractionOrganizationType {
+enum InteractionChannelType {
   FOLLOW
   LIKE
 }
@@ -62,7 +61,7 @@ enum InteractionSeriesType {
   LIKE
 }
 
-enum OrganizationType {
+enum ChannelType {
   NORMAL
   NEWS
   BLOG
@@ -74,28 +73,20 @@ enum OrganizationType {
 // postSchedule: postReviewID, startAt
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
+  id        String       @id @default(uuid())
+  email     String       @unique
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
   createdBy String?
+  role      UserRoleType @default(MEMBER)
 
-  role                     UserRole                  @default(USER)
-  posts                    Post[]
-  postRevisions            PostRevision[]
-  postSchedules            PostSchedule[]
-  postReviews              PostReview[]
-  revisionAuthors          PostRevisionsAuthors[]
-  postAuthors              PostsAuthors[]
-  organizations            Organization[]
-  roles                    UsersRoles[]
-  menus                    Menu[]
-  coursesMembers           CoursesMembers[]          @relation("CourseMembers")
-  coursesBuyers            CoursesMembers[]          @relation("CourseBuyers")
-  interactionPosts         InteractionPost[]
-  interactionOrganizations InteractionOrganization[]
-  interactionSeries        InteractionSeries[]
+  posts         PostUser[]
+  postRevisions PostRevisionUser[]
+  channels      Channel[]
+  roles         UserRole[]
+  courseMember  CourseMember[]     @relation("CourseMember")
+  courseBuyer   CourseMember[]     @relation("CourseBuyer")
 }
 
 model Tag {
@@ -103,15 +94,15 @@ model Tag {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   createdBy String?
-  orgId     String
+  channelId String
 
-  organization Organization       @relation(fields: [orgId], references: [id])
-  posts        PostsTags[]
-  revisons     PostRevisonsTags[]
-  titleLocale  FieldLocale[] // title multilanguage
-  portalSubs   PortalSubsTags[]
-  menus        TagsMenus[]
-  menuItems    TagsMenuItems[]
+  channel     Channel          @relation(fields: [channelId], references: [id])
+  posts       PostTag[]
+  revisons    PostRevisonTag[]
+  titleLocale FieldLocale[] // title multilanguage
+  portalSubs  PortalSubTag[]
+  menus       TagMenu[]
+  menuItems   TagMenuItem[]
 }
 
 model FieldLocale {
@@ -143,7 +134,7 @@ model FieldLocale {
   @@unique([menuId, lang, field])
 }
 
-model PostsTags {
+model PostTag {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -157,7 +148,7 @@ model PostsTags {
   @@unique([postId, tagId])
 }
 
-model PostRevisonsTags {
+model PostRevisonTag {
   id         String   @id @default(uuid())
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -171,7 +162,7 @@ model PostRevisonsTags {
   @@unique([revisionId, tagId])
 }
 
-model PostsAuthors {
+model PostUser {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -182,23 +173,24 @@ model PostsAuthors {
   post Post @relation(fields: [postId], references: [id])
   user User @relation(fields: [userId], references: [id])
 
-  @@unique([createdBy, postId])
+  @@unique([postId, userId])
 }
 
-model PostRevisionsAuthors {
+model PostRevisionUser {
   id         String   @id @default(uuid())
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  createdBy  String
+  createdBy  String?
   revisionId String
+  userId     String
 
   revision PostRevision @relation(fields: [revisionId], references: [id])
-  user     User         @relation(fields: [createdBy], references: [id])
+  user     User         @relation(fields: [userId], references: [id])
 
-  @@unique([createdBy, revisionId])
+  @@unique([revisionId, userId])
 }
 
-model PostsSlugs {
+model PostSlug {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -211,36 +203,35 @@ model PostsSlugs {
 }
 
 model Post {
-  id                  String    @id @default(uuid())
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  createdBy           String
-  locale              Locale    @default(GB)
-  publishedRevisionId String?   @unique
-  latestedRevisionId  String?   @unique
-  primaryId           String?
-  type                PostType  @default(NORMAL)
-  orgId               String
-  slugId              String?   @unique
-  deletedAt           DateTime?
+  id                String    @id @default(uuid())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  createdBy         String?
+  locale            Locale    @default(GB)
+  publishRevisionId String?   @unique
+  latestRevisionId  String?   @unique
+  primaryId         String?
+  type              PostType  @default(NORMAL)
+  channnelId        String
+  slugId            String?   @unique
+  deletedAt         DateTime?
 
-  primary              Post?             @relation("PostLocalization", fields: [primaryId], references: [id])
-  locales              Post[]            @relation("PostLocalization")
-  user                 User              @relation(fields: [createdBy], references: [id])
-  authors              PostsAuthors[]
-  postReviews          PostReview[]
-  postRevisions        PostRevision[]    @relation("PostRevisions")
-  latestedRevision     PostRevision?     @relation("PostLatestRevision", fields: [latestedRevisionId], references: [id])
-  publishedRevision    PostRevision?     @relation("PostPublishedRevision", fields: [publishedRevisionId], references: [id])
-  organization         Organization      @relation(fields: [orgId], references: [id])
-  tags                 PostsTags[]
-  portalSubs           PortalSubsPosts[]
-  interactionViewPosts InteractionPost[]
-  slugPublish          PostsSlugs?       @relation("PostSlugPublish", fields: [slugId], references: [id])
-  slugList             PostsSlugs[]      @relation("PostSlugList")
+  postPrimary         Post?             @relation("PostLocalization", fields: [primaryId], references: [id])
+  postlocales         Post[]            @relation("PostLocalization")
+  postReviews         PostReview[]
+  postRevisions       PostRevision[]    @relation("PostRevisions")
+  postLatestRevision  PostRevision?     @relation("PostLatestRevision", fields: [latestRevisionId], references: [id])
+  postPublishRevision PostRevision?     @relation("PostPublishRevision", fields: [publishRevisionId], references: [id])
+  authors             PostUser[]
+  channel             Channel           @relation(fields: [channnelId], references: [id])
+  tags                PostTag[]
+  portalSubs          PortalSubPost[]
+  interactionPosts    InteractionPost[]
+  slugPublish         PostSlug?         @relation("PostSlugPublish", fields: [slugId], references: [id])
+  slugList            PostSlug[]        @relation("PostSlugList")
 }
 
-model TagsMenus {
+model TagMenu {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -255,7 +246,7 @@ model TagsMenus {
   @@unique([tagId, menuId])
 }
 
-model TagsMenuItems {
+model TagMenuItem {
   id         String   @id @default(uuid())
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -274,21 +265,20 @@ model Menu {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
   createdBy        String?
-  orgId            String
+  channelId        String
   type             MenuType
   order            Int
   dataLocale       FieldLocale[] // title, slug, description
   arrTitleLatinize String[]
   image            String?
 
-  user              User?               @relation(fields: [createdBy], references: [id])
-  organization      Organization        @relation(fields: [orgId], references: [id])
+  channel           Channel             @relation(fields: [channelId], references: [id])
   portals           Portal[]
   menuItems         MenuItem[]
-  tags              TagsMenus[]
+  tags              TagMenu[]
   interactionSeries InteractionSeries[]
 
-  @@unique([orgId, order])
+  @@unique([channelId, order])
 }
 
 // series or menu child
@@ -302,8 +292,8 @@ model MenuItem {
   dataLocale       FieldLocale[] // title, slug, description
   arrTitleLatinize String[]
 
-  menu Menu            @relation(fields: [menuId], references: [id])
-  tags TagsMenuItems[]
+  menu Menu          @relation(fields: [menuId], references: [id])
+  tags TagMenuItem[]
 
   @@unique([menuId, itemOrder])
 }
@@ -315,14 +305,13 @@ model PostRevision {
   createdBy String
   postId    String
 
-  user            User                   @relation(fields: [createdBy], references: [id])
-  post            Post                   @relation("PostRevisions", fields: [postId], references: [id])
-  latestedPost    Post?                  @relation("PostLatestRevision")
-  publishedPost   Post?                  @relation("PostPublishedRevision")
-  postReview      PostReview?
-  revisionAuthors PostRevisionsAuthors[]
-  revisonTags     PostRevisonsTags[]
-  data            PostRevisionData?
+  post         Post               @relation("PostRevisions", fields: [postId], references: [id])
+  postLatest   Post?              @relation("PostLatestRevision")
+  postPublish  Post?              @relation("PostPublishRevision")
+  postReview   PostReview?
+  authors      PostRevisionUser[]
+  tags         PostRevisonTag[]
+  revisionData PostRevisionData?
 }
 
 model PostRevisionData {
@@ -357,7 +346,6 @@ model PostReview {
   rejectedAt     DateTime?
 
   post          Post          @relation(fields: [postId], references: [id])
-  user          User          @relation(fields: [createdBy], references: [id])
   postRevision  PostRevision  @relation(fields: [postRevisionId], references: [id])
   postSchedules PostSchedule?
 
@@ -368,11 +356,10 @@ model PostSchedule {
   id           String   @id @default(uuid())
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  createdBy    String
+  createdBy    String?
   postReviewId String   @unique
   startAt      DateTime
 
-  user       User       @relation(fields: [createdBy], references: [id])
   postReview PostReview @relation(fields: [postReviewId], references: [id])
 }
 
@@ -381,17 +368,17 @@ model Portal {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   createdBy String?
-  orgId     String
+  channelId String
   order     Int
   isAlpha   Boolean  @default(false)
   menuId    String
 
-  organization Organization  @relation(fields: [orgId], references: [id])
-  menu         Menu          @relation(fields: [menuId], references: [id])
-  PortalSub    PortalSub[]
-  dataLocale   FieldLocale[] // title, slug
+  channnel   Channel       @relation(fields: [channelId], references: [id])
+  menu       Menu          @relation(fields: [menuId], references: [id])
+  PortalSub  PortalSub[]
+  dataLocale FieldLocale[] // title, slug
 
-  @@unique([orgId, order])
+  @@unique([channelId, order])
 }
 
 model PortalSub {
@@ -403,16 +390,16 @@ model PortalSub {
   order       Int
   articleType ArticleType
 
-  portal        Portal            @relation(fields: [portalId], references: [id])
+  portal        Portal          @relation(fields: [portalId], references: [id])
   dataLocale    FieldLocale[] // title, slug
   linkExternals LinkExternal[]
-  linkInternals PortalSubsPosts[]
-  tags          PortalSubsTags[]
+  linkInternals PortalSubPost[]
+  tags          PortalSubTag[]
 
   @@unique([portalId, order])
 }
 
-model PortalSubsPosts {
+model PortalSubPost {
   id          String   @id @default(uuid())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -426,7 +413,7 @@ model PortalSubsPosts {
   @@unique([portalSubId, postId])
 }
 
-model PortalSubsTags {
+model PortalSubTag {
   id          String   @id @default(uuid())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -452,10 +439,10 @@ model LinkExternal {
   portalSub PortalSub @relation(fields: [portalSubId], references: [id])
 }
 
-model Organization {
-  id          String           @id @default(uuid())
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+model Channel {
+  id          String      @id @default(uuid())
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
   createdBy   String?
   name        String
   description String
@@ -464,35 +451,36 @@ model Organization {
   logoLight   String?
   favicon     String
   coverImage  String?
-  userName    String           @unique
-  domain      String?          @unique
+  userName    String      @unique
+  domain      String?     @unique
   locales     Locale[]
-  type        OrganizationType @default(NORMAL)
+  type        ChannelType @default(NORMAL)
 
-  user         User?                     @relation(fields: [createdBy], references: [id])
   posts        Post[]
   socials      Social[]
-  settings     OrganizationSetting[]
+  settings     ChannelSetting[]
   tags         Tag[]
   portals      Portal[]
   roles        Role[]
   menus        Menu[]
   courses      Course[]
-  interactions InteractionOrganization[]
+  interactions InteractionChannel[]
+  User         User?                @relation(fields: [userId], references: [id])
+  userId       String?
 }
 
-model OrganizationSetting {
+model ChannelSetting {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   createdBy String?
-  orgId     String
+  channelId String
   name      String
   value     Boolean
 
-  organization Organization @relation(fields: [orgId], references: [id])
+  channel Channel @relation(fields: [channelId], references: [id])
 
-  @@unique([orgId, name])
+  @@unique([channelId, name])
 }
 
 model Social {
@@ -500,16 +488,16 @@ model Social {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   createdBy String?
-  orgId     String
+  channelId String
   name      String
   url       String
 
-  organization Organization @relation(fields: [orgId], references: [id])
+  channel Channel @relation(fields: [channelId], references: [id])
 
-  @@unique([orgId, name])
+  @@unique([channelId, name])
 }
 
-model UsersRoles {
+model UserRole {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -529,13 +517,13 @@ model Role {
   updatedAt DateTime @updatedAt
   createdBy String?
   name      String
-  orgId     String
+  channelId String
 
-  organization Organization @relation(fields: [orgId], references: [id])
-  permissions  Permission[]
-  users        UsersRoles[]
+  channel     Channel      @relation(fields: [channelId], references: [id])
+  permissions Permission[]
+  users       UserRole[]
 
-  @@unique([orgId, name])
+  @@unique([channelId, name])
 }
 
 model Permission {
@@ -560,7 +548,7 @@ model Course {
   title        String
   image        String
   description  String
-  orgId        String
+  channnelId   String
   lang         Locale    @default(GB)
   utilities    String[]
   price        Float
@@ -569,12 +557,12 @@ model Course {
   startAt      DateTime
   endAt        DateTime?
 
-  organization Organization     @relation(fields: [orgId], references: [id])
-  members      CoursesMembers[]
-  chapters     Chapter[]
+  channnel Channel        @relation(fields: [channnelId], references: [id])
+  members  CourseMember[]
+  chapters Chapter[]
 }
 
-model CoursesMembers {
+model CourseMember {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -584,10 +572,10 @@ model CoursesMembers {
   message   String?
   buyerId   String
 
-  user    User             @relation("CourseMembers", fields: [userId], references: [id])
-  buyer   User             @relation("CourseBuyers", fields: [buyerId], references: [id])
-  Course  Course           @relation(fields: [courseId], references: [id])
-  lessons LessonsMembers[]
+  user    User           @relation("CourseMember", fields: [userId], references: [id])
+  buyer   User           @relation("CourseBuyer", fields: [buyerId], references: [id])
+  Course  Course         @relation(fields: [courseId], references: [id])
+  lessons LessonMember[]
 
   @@unique([userId, courseId])
 }
@@ -607,7 +595,7 @@ model Chapter {
   @@unique([courseId, order])
 }
 
-model LessonsMembers {
+model LessonMember {
   id             String   @id @default(uuid())
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -617,8 +605,8 @@ model LessonsMembers {
   courseId       String
   status         String
 
-  courseMember CoursesMembers @relation(fields: [courseMemberId], references: [id])
-  lesson       Lesson         @relation(fields: [lessonId], references: [id])
+  courseMember CourseMember @relation(fields: [courseMemberId], references: [id])
+  lesson       Lesson       @relation(fields: [lessonId], references: [id])
 
   @@unique([courseMemberId, lessonId])
 }
@@ -636,8 +624,8 @@ model Lesson {
   duration    String
   documents   Document[]
 
-  chapter Chapter          @relation(fields: [chapterId], references: [id])
-  members LessonsMembers[]
+  chapter Chapter        @relation(fields: [chapterId], references: [id])
+  members LessonMember[]
 
   @@unique([chapterId, order])
 }
@@ -669,20 +657,18 @@ model InteractionPost {
   fatherComment   InteractionPost?  @relation("RelatedComment", fields: [fatherCommentId], references: [id])
   relatedComments InteractionPost[] @relation("RelatedComment")
   post            Post              @relation(fields: [postId], references: [id])
-  user            User              @relation(fields: [userId], references: [id])
 }
 
-model InteractionOrganization {
-  id        String                      @id @default(uuid())
-  createdAt DateTime                    @default(now())
-  updatedAt DateTime                    @updatedAt
-  createdBy String?
-  orgId     String
-  userId    String
-  type      InteractionOrganizationType
+model InteractionChannel {
+  id         String                 @id @default(uuid())
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+  createdBy  String?
+  channnelId String
+  userId     String
+  type       InteractionChannelType
 
-  organization Organization @relation(fields: [orgId], references: [id])
-  user         User         @relation(fields: [userId], references: [id])
+  channel Channel @relation(fields: [channnelId], references: [id])
 }
 
 model InteractionSeries {
@@ -695,5 +681,4 @@ model InteractionSeries {
   type      InteractionSeriesType
 
   series Menu @relation(fields: [seriesId], references: [id])
-  user   User @relation(fields: [userId], references: [id])
 }
