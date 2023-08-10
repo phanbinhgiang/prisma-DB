@@ -96,13 +96,13 @@ model Tag {
   createdBy String?
   channelId String
 
-  channel     Channel          @relation(fields: [channelId], references: [id])
-  posts       PostTag[]
-  revisons    PostRevisonTag[]
-  titleLocale FieldLocale[] // title multilanguage
-  portalSubs  PortalSubTag[]
-  menus       TagMenu[]
-  menuItems   TagMenuItem[]
+  channel      Channel          @relation(fields: [channelId], references: [id])
+  posts        PostTag[]
+  postRevisons PostRevisonTag[]
+  titleLocale  FieldLocale[] // title multilanguage
+  portalSubs   PortalSubTag[]
+  menus        TagMenu[]
+  menuItems    TagMenuItem[]
 }
 
 model FieldLocale {
