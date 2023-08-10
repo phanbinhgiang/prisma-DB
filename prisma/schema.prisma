@@ -96,13 +96,13 @@ model Tag {
   createdBy String?
   channelId String
 
-  channel      Channel          @relation(fields: [channelId], references: [id])
-  posts        PostTag[]
-  postRevisons PostRevisonTag[]
-  titleLocale  FieldLocale[] // title multilanguage
-  portalSubs   PortalSubTag[]
-  menus        TagMenu[]
-  menuItems    TagMenuItem[]
+  channel       Channel           @relation(fields: [channelId], references: [id])
+  posts         PostTag[]
+  postRevisions PostRevisionTag[]
+  titleLocale   FieldLocale[] // title multilanguage
+  portalSubs    PortalSubTag[]
+  menus         TagMenu[]
+  menuItems     TagMenuItem[]
 }
 
 model FieldLocale {
@@ -148,7 +148,7 @@ model PostTag {
   @@unique([postId, tagId])
 }
 
-model PostRevisonTag {
+model PostRevisionTag {
   id         String   @id @default(uuid())
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -310,7 +310,7 @@ model PostRevision {
   postPublish  Post?              @relation("PostPublishRevision")
   postReview   PostReview?
   authors      PostRevisionUser[]
-  tags         PostRevisonTag[]
+  tags         PostRevisionTag[]
   revisionData PostRevisionData?
 }
 
